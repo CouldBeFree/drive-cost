@@ -1,12 +1,16 @@
-import { findAllFuelEntries, findFuelEntriesByUser, findFuelEntriesByVehicle, insertFuelEntry, updateFuelEntry as updateFuelEntryQuery, deleteFuelEntry as deleteFuelEntryQuery } from '../db/queries/fuel-entries'
+import { findAllFuelEntries, findFuelEntriesByUser, findFuelEntriesByVehicle, countFuelEntriesByUser, insertFuelEntry, updateFuelEntry as updateFuelEntryQuery, deleteFuelEntry as deleteFuelEntryQuery } from '../db/queries/fuel-entries'
 import type { FuelEntry, FuelEntryCreate } from '~~/app/types'
 
 export async function getAllFuelEntries(): Promise<FuelEntry[]> {
   return findAllFuelEntries()
 }
 
-export async function getFuelEntriesByUser(userId: number): Promise<FuelEntry[]> {
-  return findFuelEntriesByUser(userId)
+export async function getFuelEntriesByUser(userId: number, limit?: number, offset?: number): Promise<FuelEntry[]> {
+  return findFuelEntriesByUser(userId, limit, offset)
+}
+
+export async function getTotalFuelEntriesByUser(userId: number): Promise<number> {
+  return countFuelEntriesByUser(userId)
 }
 
 export async function getFuelEntriesByVehicle(vehicleId: number): Promise<FuelEntry[]> {

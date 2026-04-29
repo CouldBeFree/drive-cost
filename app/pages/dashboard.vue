@@ -1,41 +1,369 @@
 <template>
   <div class="space-y-6">
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <BaseCard v-for="stat in stats" :key="stat.label">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-text-muted">{{ stat.label }}</p>
-            <p class="mt-1 text-2xl font-semibold text-text-primary">{{ stat.value }}</p>
-          </div>
-          <div :class="['flex h-10 w-10 items-center justify-center rounded-lg', stat.bgColor]">
-            <span :class="['text-lg', stat.textColor]">{{ stat.icon }}</span>
-          </div>
+    <div>
+      <p class="text-sm text-text-muted">Analyze your fuel spending and consumption</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="relative flex flex-wrap items-center gap-2 sm:gap-3">
+      <!-- Vehicle Filter (only show if multiple vehicles) -->
+      <div v-if="vehicles.length > 1" class="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm transition-all hover:border-primary/40">
+        <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+        </svg>
+        <select
+          v-model="selectedVehicleId"
+          class="border-none bg-transparent pr-8 text-sm font-medium text-text-primary focus:outline-none focus:ring-0"
+        >
+          <option :value="null">All Vehicles</option>
+          <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+            {{ vehicle.make }} {{ vehicle.model }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Period Type Selector -->
+      <div class="inline-flex items-center gap-1 rounded-xl border border-border bg-surface p-1 shadow-sm w-full sm:w-auto">
+        <button
+          @click="periodType = 'all-time'"
+          :class="[
+            'flex-1 sm:flex-none rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap',
+            periodType === 'all-time'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-muted hover:text-text-primary'
+          ]"
+        >
+          All Time
+        </button>
+        <button
+          @click="periodType = 'year'"
+          :class="[
+            'flex-1 sm:flex-none rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold transition-all',
+            periodType === 'year'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-muted hover:text-text-primary'
+          ]"
+        >
+          Year
+        </button>
+        <button
+          @click="periodType = 'month'"
+          :class="[
+            'flex-1 sm:flex-none rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold transition-all',
+            periodType === 'month'
+              ? 'bg-primary text-white shadow-sm'
+              : 'text-text-muted hover:text-text-primary'
+          ]"
+        >
+          Month
+        </button>
+      </div>
+
+      <!-- Year Picker (only show when Year is selected) -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        leave-active-class="transition-all duration-150 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="periodType === 'year'" class="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm transition-all hover:border-primary/40">
+          <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          <select
+            v-model="selectedYear"
+            class="border-none bg-transparent text-sm font-medium text-text-primary focus:outline-none focus:ring-0"
+          >
+            <option v-for="year in availableYears" :key="year" :value="year">
+              {{ year }}
+            </option>
+          </select>
         </div>
+      </Transition>
+
+      <!-- Month Picker (only show when Month is selected) -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        leave-active-class="transition-all duration-150 ease-in"
+        enter-from-class="opacity-0 scale-95"
+        enter-to-class="opacity-100 scale-100"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-95"
+      >
+        <div v-if="periodType === 'month'" class="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 sm:px-4 py-2 sm:py-2.5 shadow-sm transition-all hover:border-primary/40">
+          <svg class="h-4 w-4 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          <input
+            v-model="selectedMonth"
+            type="month"
+            class="border-none bg-transparent text-sm font-medium text-text-primary focus:outline-none focus:ring-0 min-w-0"
+          />
+        </div>
+      </Transition>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <BaseCard title="Avg. Consumption">
+        <p class="text-3xl font-bold text-primary">
+          {{ formatDecimal(statistics?.avg_consumption) }}
+          <span class="text-base font-normal text-text-muted">L/100km</span>
+        </p>
+      </BaseCard>
+
+      <BaseCard title="Avg. Cost per km">
+        <p class="text-3xl font-bold text-secondary">
+          {{ formatDecimal(statistics?.avg_cost_per_km) }}
+          <span class="text-base font-normal text-text-muted">$/km</span>
+        </p>
+      </BaseCard>
+
+      <BaseCard title="Total Distance">
+        <p class="text-3xl font-bold text-success">
+          {{ formatInteger(statistics?.total_distance) }}
+          <span class="text-base font-normal text-text-muted">km</span>
+        </p>
       </BaseCard>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <BaseCard title="Recent Fuel Entries" description="Latest refueling records">
-        <p class="text-sm text-text-muted">No fuel entries yet. Start by adding your first entry.</p>
+    <!-- Monthly Charts (only show when Year is selected) -->
+    <div v-if="periodType === 'year' && monthlyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <BaseCard title="Monthly Consumption">
+        <MonthlyBarChart
+          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.avg_consumption }))"
+          bar-color="bg-primary"
+          :value-formatter="formatDecimal"
+        />
       </BaseCard>
 
-      <BaseCard title="Fuel Consumption Trend" description="L/100km over time">
-        <p class="text-sm text-text-muted">Chart will appear once you have enough data.</p>
+      <BaseCard title="Monthly Cost per km">
+        <MonthlyBarChart
+          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.avg_cost_per_km }))"
+          bar-color="bg-secondary"
+          :value-formatter="formatDecimal"
+        />
+      </BaseCard>
+
+      <BaseCard title="Monthly Distance">
+        <MonthlyBarChart
+          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.total_distance }))"
+          bar-color="bg-success"
+          :value-formatter="formatInteger"
+        />
+      </BaseCard>
+    </div>
+
+    <!-- Daily Charts (only show when Month is selected) -->
+    <div v-if="periodType === 'month' && dailyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <BaseCard title="Daily Consumption">
+        <MonthlyBarChart
+          :data="dailyStatistics.map(d => ({ month: d.day, value: d.avg_consumption }))"
+          bar-color="bg-primary"
+          :value-formatter="formatDecimal"
+        />
+      </BaseCard>
+
+      <BaseCard title="Daily Cost per km">
+        <MonthlyBarChart
+          :data="dailyStatistics.map(d => ({ month: d.day, value: d.avg_cost_per_km }))"
+          bar-color="bg-secondary"
+          :value-formatter="formatDecimal"
+        />
+      </BaseCard>
+
+      <BaseCard title="Daily Distance">
+        <MonthlyBarChart
+          :data="dailyStatistics.map(d => ({ month: d.day, value: d.total_distance }))"
+          bar-color="bg-success"
+          :value-formatter="formatInteger"
+        />
+      </BaseCard>
+    </div>
+
+    <!-- Yearly Charts (only show when All Time is selected) -->
+    <div v-if="periodType === 'all-time' && yearlyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <BaseCard title="Yearly Consumption">
+        <MonthlyBarChart
+          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.avg_consumption }))"
+          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
+          bar-color="bg-primary"
+          :value-formatter="formatDecimal"
+        />
+      </BaseCard>
+
+      <BaseCard title="Yearly Cost per km">
+        <MonthlyBarChart
+          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.avg_cost_per_km }))"
+          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
+          bar-color="bg-secondary"
+          :value-formatter="formatDecimal"
+        />
+      </BaseCard>
+
+      <BaseCard title="Yearly Distance">
+        <MonthlyBarChart
+          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.total_distance }))"
+          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
+          bar-color="bg-success"
+          :value-formatter="formatInteger"
+        />
       </BaseCard>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { Vehicle } from '~/types'
+
 definePageMeta({
   layout: 'dashboard',
   middleware: 'auth',
 })
 
-const stats = [
-  { label: 'Total Vehicles', value: '0', icon: '🚗', bgColor: 'bg-primary/10', textColor: 'text-primary' },
-  { label: 'Fuel Entries', value: '0', icon: '⛽', bgColor: 'bg-success/10', textColor: 'text-success' },
-  { label: 'Avg. Consumption', value: '— L/100km', icon: '📊', bgColor: 'bg-secondary/10', textColor: 'text-secondary' },
-  { label: 'Total Spent', value: '$0.00', icon: '💰', bgColor: 'bg-error/10', textColor: 'text-error' },
-]
+interface Statistics {
+  avg_consumption: number | null
+  avg_cost_per_km: number | null
+  total_distance: number | null
+  total_fuel: number | null
+  total_cost: number | null
+}
+
+interface MonthlyStatistics {
+  month: number
+  avg_consumption: number | null
+  avg_cost_per_km: number | null
+  total_distance: number | null
+}
+
+interface DailyStatistics {
+  day: number
+  avg_consumption: number | null
+  avg_cost_per_km: number | null
+  total_distance: number | null
+}
+
+interface YearlyStatistics {
+  year: number
+  avg_consumption: number | null
+  avg_cost_per_km: number | null
+  total_distance: number | null
+}
+
+const vehicles = ref<Vehicle[]>([])
+const selectedVehicleId = ref<number | null>(null)
+const periodType = ref<'all-time' | 'year' | 'month'>('month')
+const selectedMonth = ref('')
+const selectedYear = ref<number>(new Date().getFullYear())
+const statistics = ref<Statistics | null>(null)
+const monthlyStatistics = ref<MonthlyStatistics[]>([])
+const dailyStatistics = ref<DailyStatistics[]>([])
+const yearlyStatistics = ref<YearlyStatistics[]>([])
+
+// Generate available years (current year and 5 years back)
+const availableYears = computed(() => {
+  const currentYear = new Date().getFullYear()
+  const years: number[] = []
+  for (let i = 0; i <= 5; i++) {
+    years.push(currentYear - i)
+  }
+  return years
+})
+
+// Set current month as default
+const now = new Date()
+selectedMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+const loadVehicles = async () => {
+  try {
+    const response = await $fetch<{ data: Vehicle[] }>('/api/vehicles')
+    vehicles.value = response.data
+    
+    // If only one vehicle, auto-select it
+    if (vehicles.value.length === 1 && vehicles.value[0]) {
+      selectedVehicleId.value = vehicles.value[0].id
+    }
+  } catch (error) {
+    console.error('Failed to load vehicles:', error)
+  }
+}
+
+const loadStatistics = async () => {
+  try {
+    const params: Record<string, any> = {}
+    
+    if (selectedVehicleId.value) {
+      params.vehicle_id = selectedVehicleId.value
+    }
+    
+    if (periodType.value === 'month') {
+      params.month = selectedMonth.value
+    } else if (periodType.value === 'year') {
+      params.year = selectedYear.value
+    }
+    
+    const response = await $fetch<{ data: Statistics }>('/api/statistics', { params })
+    statistics.value = response.data
+
+    // Load monthly breakdown if year is selected
+    if (periodType.value === 'year') {
+      const monthlyParams = { ...params, monthly: 'true' }
+      const monthlyResponse = await $fetch<{ data: MonthlyStatistics[] }>('/api/statistics', { params: monthlyParams })
+      monthlyStatistics.value = monthlyResponse.data
+      console.log('Monthly statistics:', monthlyStatistics.value)
+    } else {
+      monthlyStatistics.value = []
+    }
+
+    // Load daily breakdown if month is selected
+    if (periodType.value === 'month') {
+      const dailyParams = { ...params, daily: 'true' }
+      const dailyResponse = await $fetch<{ data: DailyStatistics[] }>('/api/statistics', { params: dailyParams })
+      dailyStatistics.value = dailyResponse.data
+      console.log('Daily statistics:', dailyStatistics.value)
+    } else {
+      dailyStatistics.value = []
+    }
+
+    // Load yearly breakdown if all-time is selected
+    if (periodType.value === 'all-time') {
+      const yearlyParams = { 
+        vehicle_id: selectedVehicleId.value,
+        yearly: 'true' 
+      }
+      const yearlyResponse = await $fetch<{ data: YearlyStatistics[] }>('/api/statistics', { params: yearlyParams })
+      yearlyStatistics.value = yearlyResponse.data
+      console.log('Yearly statistics:', yearlyStatistics.value)
+    } else {
+      yearlyStatistics.value = []
+    }
+  } catch (error) {
+    console.error('Failed to load statistics:', error)
+  }
+}
+
+// Number formatting helpers
+const formatDecimal = (value: number | null | undefined): string => {
+  if (value == null) return '—'
+  return parseFloat(value.toString()).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
+const formatInteger = (value: number | null | undefined): string => {
+  if (value == null) return '—'
+  return Math.round(parseFloat(value.toString())).toLocaleString('en-US')
+}
+
+// Watch for filter changes and reload statistics
+watch([selectedVehicleId, periodType, selectedMonth, selectedYear], () => {
+  loadStatistics()
+})
+
+onMounted(() => {
+  loadVehicles()
+  loadStatistics()
+})
 </script>

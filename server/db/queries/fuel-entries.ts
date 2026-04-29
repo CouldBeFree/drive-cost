@@ -20,7 +20,20 @@ export async function findAllFuelEntries(): Promise<FuelEntry[]> {
   `)
 }
 
-export async function findFuelEntriesByUser(userId: number): Promise<FuelEntry[]> {
+export async function findFuelEntriesByUser(userId: number, limit?: number, offset?: number): Promise<FuelEntry[]> {
+  const params: any[] = [userId]
+  let limitClause = ''
+  
+  if (limit !== undefined) {
+    params.push(limit)
+    limitClause = `LIMIT $${params.length}`
+    
+    if (offset !== undefined) {
+      params.push(offset)
+      limitClause += ` OFFSET $${params.length}`
+    }
+  }
+  
   return query<FuelEntry>(`
     WITH entries_with_prev AS (
       SELECT fe.id, fe.vehicle_id, fe.date, fe.odometer_km, fe.liters, fe.price_per_liter,
@@ -44,7 +57,19 @@ export async function findFuelEntriesByUser(userId: number): Promise<FuelEntry[]
            END as l_per_100km
     FROM entries_with_prev
     ORDER BY date DESC, odometer_km DESC
+    ${limitClause}
+  `, params)
+}
+
+export async function countFuelEntriesByUser(userId: number): Promise<number> {
+  const result = await queryOne<{ count: string }>(`
+    SELECT COUNT(*) as count
+    FROM fuel_entries fe
+    INNER JOIN vehicles v ON fe.vehicle_id = v.id
+    WHERE v.user_id = $1
   `, [userId])
+  
+  return parseInt(result?.count || '0', 10)
 }
 
 export async function insertFuelEntry(data: FuelEntryCreate): Promise<FuelEntry | null> {

@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-lg font-semibold text-text-primary">Fuel Entries</h2>
+        <h1 class="text-2xl font-bold text-text-primary">Fuel Entries</h1>
         <p class="text-sm text-text-muted">Track your refueling history</p>
       </div>
       <BaseButton @click="openAddForm">
@@ -10,8 +10,53 @@
       </BaseButton>
     </div>
 
+    <!-- Filters -->
+    <BaseCard>
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Vehicle Filter -->
+        <div class="min-w-[140px]">
+          <select
+            v-model="selectedVehicleId"
+            class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option :value="null">All Vehicles</option>
+            <option v-for="vehicle in vehicles" :key="vehicle.id" :value="vehicle.id">
+              {{ vehicle.make }} {{ vehicle.model }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Date From -->
+        <input
+          v-model="dateFrom"
+          type="date"
+          placeholder="From"
+          class="min-w-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+
+        <!-- Date To -->
+        <input
+          v-model="dateTo"
+          type="date"
+          placeholder="To"
+          class="min-w-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+
+        <!-- Clear Filters -->
+        <button
+          v-if="hasActiveFilters"
+          @click="clearFilters"
+          class="rounded-lg border border-border px-3 py-2 text-sm font-medium text-text-muted transition-all hover:border-primary hover:text-primary whitespace-nowrap"
+        >
+          Clear
+        </button>
+      </div>
+    </BaseCard>
+
     <BaseCard no-padding>
-      <BaseTable :columns="columns" :rows="entries" empty-text="No fuel entries yet">
+      <div class="overflow-x-auto">
+        <TableSkeleton v-if="loading" :rows="10" :columns="9" />
+        <BaseTable v-else :columns="columns" :rows="filteredEntries" empty-text="No fuel entries found">
         <template #cell-date="{ value }">
           {{ formatDate(value) }}
         </template>
@@ -59,6 +104,52 @@
           </div>
         </template>
       </BaseTable>
+      </div>
+      
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border px-4 sm:px-6 py-4">
+        <div class="text-xs sm:text-sm text-text-muted">
+          Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, totalItems) }} of {{ totalItems }} entries
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button
+            @click="prevPage"
+            :disabled="currentPage === 1"
+            class="rounded-lg border border-border px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-text-primary transition-all hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          
+          <div class="hidden sm:flex items-center gap-1">
+            <button
+              v-for="page in visiblePages"
+              :key="page"
+              @click="goToPage(page)"
+              :class="[
+                'rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                page === currentPage
+                  ? 'bg-primary text-white'
+                  : 'border border-border text-text-primary hover:bg-surface'
+              ]"
+            >
+              {{ page }}
+            </button>
+          </div>
+          
+          <div class="sm:hidden text-xs text-text-muted">
+            Page {{ currentPage }} of {{ totalPages }}
+          </div>
+          
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages"
+            class="rounded-lg border border-border px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-text-primary transition-all hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </BaseCard>
 
     <!-- Delete Fuel Entry Modal -->
@@ -116,6 +207,9 @@
       @update:model-value="showEntryForm = false"
       @submit="handleEntrySubmit"
     />
+    
+    <!-- Toast Container -->
+    <ToastContainer />
   </div>
 </template>
 
@@ -146,6 +240,41 @@ const columns = [
 ]
 
 const entries = ref<FuelEntry[]>([])
+const loading = ref(false)
+const searchQuery = ref('')
+const selectedVehicleId = ref<number | null>(null)
+const dateFrom = ref('')
+const dateTo = ref('')
+const toast = useToast()
+
+const hasActiveFilters = computed(() => {
+  return searchQuery.value || selectedVehicleId.value || dateFrom.value || dateTo.value
+})
+
+const filteredEntries = computed(() => {
+  let result = entries.value
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(entry => {
+      return (
+        entry.make?.toLowerCase().includes(query) ||
+        entry.model?.toLowerCase().includes(query) ||
+        entry.total_cost.toString().includes(query) ||
+        formatDate(entry.date).includes(query)
+      )
+    })
+  }
+
+  return result
+})
+
+const clearFilters = () => {
+  searchQuery.value = ''
+  selectedVehicleId.value = null
+  dateFrom.value = ''
+  dateTo.value = ''
+}
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString)
@@ -178,13 +307,28 @@ const confirmDelete = (entry: FuelEntry) => {
 const handleDelete = async () => {
   if (!entryToDelete.value) return
   deleteLoading.value = true
+  
+  const entryId = entryToDelete.value.id
+  const entryIndex = entries.value.findIndex(e => e.id === entryId)
+  const deletedEntry = entryIndex > -1 ? entries.value[entryIndex] : null
+  
+  // Optimistic update
+  if (entryIndex > -1) {
+    entries.value.splice(entryIndex, 1)
+  }
+  entryToDelete.value = null
+  
   try {
-    await $fetch(`/api/fuel-entries/${entryToDelete.value.id}`, { method: 'DELETE' })
-    entryToDelete.value = null
+    await $fetch(`/api/fuel-entries/${entryId}`, { method: 'DELETE' })
+    toast.success('Fuel entry deleted successfully')
     await loadFuelEntries()
   } catch (error: any) {
     console.error('Failed to delete fuel entry:', error)
-    alert(error.data?.message || 'Failed to delete fuel entry')
+    toast.error(error.data?.message || 'Failed to delete fuel entry')
+    // Revert optimistic update
+    if (deletedEntry && entryIndex > -1) {
+      entries.value.splice(entryIndex, 0, deletedEntry)
+    }
   } finally {
     deleteLoading.value = false
   }
@@ -200,8 +344,15 @@ const handleEntrySubmit = async (data: { vehicle_id: number; date: string; odome
           is_full_tank: true,
         },
       })
-      const idx = entries.value.findIndex(e => e.id === entryToEdit.value!.id)
-      if (idx !== -1 && response.data) entries.value[idx] = response.data
+      
+      // Optimistic update
+      const index = entries.value.findIndex(e => e.id === entryToEdit.value!.id)
+      if (index > -1) {
+        entries.value[index] = response.data
+      }
+      
+      toast.success('Fuel entry updated successfully')
+      await loadFuelEntries()
     } else {
       const response = await $fetch<{ data: FuelEntry }>('/api/fuel-entries', {
         method: 'POST',
@@ -210,12 +361,17 @@ const handleEntrySubmit = async (data: { vehicle_id: number; date: string; odome
           is_full_tank: true,
         },
       })
-      if (response.data) entries.value.unshift(response.data)
+      
+      // Optimistic update
+      entries.value.unshift(response.data)
+      
+      toast.success('Fuel entry created successfully')
+      await loadFuelEntries()
     }
     showEntryForm.value = false
   } catch (error: any) {
     console.error('Failed to save fuel entry:', error)
-    alert(error.data?.message || 'Failed to save fuel entry')
+    toast.error(error.data?.message || 'Failed to save fuel entry')
   }
 }
 
@@ -228,12 +384,96 @@ const loadVehicles = async () => {
   }
 }
 
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const totalPages = ref(0)
+const totalItems = ref(0)
+
+const visiblePages = computed(() => {
+  const pages: number[] = []
+  const maxVisible = 5
+  
+  if (totalPages.value <= maxVisible) {
+    for (let i = 1; i <= totalPages.value; i++) {
+      pages.push(i)
+    }
+  } else {
+    const start = Math.max(1, currentPage.value - 2)
+    const end = Math.min(totalPages.value, start + maxVisible - 1)
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+  }
+  
+  return pages
+})
+
 const loadFuelEntries = async () => {
+  loading.value = true
   try {
-    const response = await $fetch<{ data: FuelEntry[] }>('/api/fuel-entries')
+    const params: Record<string, any> = {
+      page: currentPage.value,
+      limit: itemsPerPage.value
+    }
+    
+    if (selectedVehicleId.value) {
+      params.vehicle_id = selectedVehicleId.value
+    }
+    
+    if (dateFrom.value) {
+      params.date_from = dateFrom.value
+    }
+    
+    if (dateTo.value) {
+      params.date_to = dateTo.value
+    }
+    
+    const response = await $fetch<{ 
+      data: FuelEntry[]
+      pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+      }
+    }>('/api/fuel-entries', { params })
+    
     entries.value = response.data
+    totalPages.value = response.pagination.totalPages
+    totalItems.value = response.pagination.total
   } catch (error) {
     console.error('Failed to load fuel entries:', error)
+    toast.error('Failed to load fuel entries')
+  } finally {
+    loading.value = false
+  }
+}
+
+// Watch filters and reload
+watch([selectedVehicleId, dateFrom, dateTo], () => {
+  currentPage.value = 1
+  loadFuelEntries()
+})
+
+const goToPage = (page: number) => {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+    loadFuelEntries()
+  }
+}
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    loadFuelEntries()
+  }
+}
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    loadFuelEntries()
   }
 }
 
