@@ -1,4 +1,4 @@
-import { createFuelEntry } from '~~/server/services/fuelEntryService'
+import { updateFuelEntry } from '~~/server/services/fuelEntryService'
 import { findVehicleById } from '~~/server/db/queries/vehicles'
 import type { FuelEntryCreate } from '~~/app/types'
 
@@ -6,6 +6,11 @@ export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
   if (!session.user?.id) {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  }
+
+  const id = Number(getRouterParam(event, 'id'))
+  if (!id) {
+    throw createError({ statusCode: 400, statusMessage: 'Invalid fuel entry ID' })
   }
 
   const body = await readBody<FuelEntryCreate>(event)
@@ -19,7 +24,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, statusMessage: 'Vehicle not found or access denied' })
   }
 
-  const entry = await createFuelEntry({
+  const entry = await updateFuelEntry(id, {
     ...body,
     is_full_tank: body.is_full_tank ?? true,
   })

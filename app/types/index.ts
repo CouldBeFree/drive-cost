@@ -47,6 +47,10 @@ export interface FuelEntry {
   is_full_tank: boolean
   notes: string | null
   created_at: string
+  make?: string
+  model?: string
+  distance_km?: number
+  l_per_100km?: number
 }
 
 export interface FuelEntryCreate {
