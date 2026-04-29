@@ -24,6 +24,8 @@
     "vue-router": "^5.0.4"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@types/pg": "^8.20.0",
+    "@vite-pwa/nuxt": "^1.1.1",
+    "sharp": "^0.34.5"
   }
 }

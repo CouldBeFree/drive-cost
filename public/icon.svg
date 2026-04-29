@@ -1,0 +1,22 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#3b82f6"/>
+  
+  <!-- Fuel Pump Icon -->
+  <g transform="translate(128, 128)">
+    <!-- Pump body -->
+    <rect x="40" y="80" width="120" height="160" rx="8" fill="white"/>
+    
+    <!-- Pump nozzle -->
+    <path d="M160 140 L200 140 L200 180 L220 180 L220 200 L200 200 L200 240 L160 240" stroke="white" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Display screen -->
+    <rect x="60" y="100" width="80" height="40" rx="4" fill="#3b82f6"/>
+    
+    <!-- Pump base -->
+    <rect x="20" y="240" width="160" height="16" rx="4" fill="white"/>
+    
+    <!-- Dollar sign -->
+    <text x="100" y="130" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="white" text-anchor="middle">$</text>
+  </g>
+</svg>
