@@ -85,7 +85,23 @@ docker compose logs postgres  # View logs
 docker compose exec postgres psql -U postgres -d drivecost  # Connect to DB
 ```
 
-## Production
+## Deployment
+
+### Automatic Deployment (GitHub Actions)
+
+Push to `main` branch triggers automatic deployment:
+
+```bash
+git push origin main
+```
+
+See [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) for setup instructions.
+
+### Manual Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for manual Docker deployment instructions.
+
+## Production Build
 
 ```bash
 npm run build

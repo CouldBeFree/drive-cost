@@ -23,6 +23,7 @@ logs
 .env.*
 !.env.example
 !env.production.example
+.env.prod
 
 # Docker volumes and data
 grafana/data/

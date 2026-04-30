@@ -44,10 +44,10 @@
         <div class="grid items-center gap-12 lg:grid-cols-2">
           <div>
             <h1 class="text-balance text-4xl font-bold leading-tight text-text-primary lg:text-5xl">
-              Know exactly how much every kilometer costs you
+              Track Your Fuel Costs with Precision
             </h1>
             <p class="mt-6 text-lg text-text-secondary">
-              Track fuel expenses, calculate consumption, and get detailed insights into your vehicle's cost per kilometer. Make informed decisions about your driving habits.
+              Monitor fuel expenses, analyze consumption patterns, and discover exactly how much every kilometer costs. Make smarter decisions about your vehicle usage.
             </p>
             <div class="mt-8 flex flex-wrap gap-4">
               <NuxtLink to="/dashboard">
