@@ -44,7 +44,7 @@
         <div class="grid items-center gap-12 lg:grid-cols-2">
           <div>
             <h1 class="text-balance text-4xl font-bold leading-tight text-text-primary lg:text-5xl">
-              Track Your Fuel Costs with Precision
+              Track Your Fuel Costs with Precision ✨
             </h1>
             <p class="mt-6 text-lg text-text-secondary">
               Monitor fuel expenses, analyze consumption patterns, and discover exactly how much every kilometer costs. Make smarter decisions about your vehicle usage.
