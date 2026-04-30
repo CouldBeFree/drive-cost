@@ -37,6 +37,8 @@ export default defineEventHandler(async (event) => {
       },
     }
   } catch (error: any) {
+    console.log(error);
+    console.error('REGISTER ERROR:', error);
     throw createError({
       statusCode: 400,
       message: error.message || 'Registration failed',
