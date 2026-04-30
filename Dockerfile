@@ -49,12 +49,9 @@ RUN apk add --no-cache dumb-init
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nuxt -u 1001
 
-# Copy built application
+# Copy built application (includes public assets in .output/public)
 COPY --from=builder --chown=nuxt:nodejs /app/.output /app/.output
 COPY --from=builder --chown=nuxt:nodejs /app/package*.json /app/
-
-# Copy public assets
-COPY --from=builder --chown=nuxt:nodejs /app/public /app/public
 
 # Switch to non-root user
 USER nuxt
