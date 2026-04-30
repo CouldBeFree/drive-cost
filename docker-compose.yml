@@ -38,9 +38,9 @@ services:
       context: .
       target: production
     container_name: drivecost-app
+    env_file:
+      - .env.prod
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-drivecost_user}:${POSTGRES_PASSWORD:-drivecost_password}@postgres:5432/${POSTGRES_DB:-drivecost}
-      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
       NODE_ENV: production
     depends_on:
       postgres:
@@ -50,6 +50,7 @@ services:
     restart: unless-stopped
     networks:
       - app-network
+      - edge-net
     labels:
       environment: ${ENVIRONMENT:-production}
     deploy:
@@ -68,8 +69,8 @@ services:
       context: .
       target: builder
     container_name: drivecost-migrate
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-drivecost_user}:${POSTGRES_PASSWORD:-drivecost_password}@postgres:5432/${POSTGRES_DB:-drivecost}
+    env_file:
+      - .env.prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -186,3 +187,5 @@ volumes:
 networks:
   app-network:
     driver: bridge
+  edge-net:
+    external: true
