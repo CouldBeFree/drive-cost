@@ -72,9 +72,6 @@ jobs:
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
             
-            # Pull latest changes
-            git pull origin main
-            
             # Login to GitHub Container Registry
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
@@ -83,9 +80,6 @@ jobs:
             
             # Restart app service
             docker compose up -d app
-            
-            # Run migrations
-            docker compose run --rm migrate
             
             # Clean up old images
             docker image prune -f

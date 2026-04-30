@@ -61,26 +61,6 @@ services:
         reservations:
           memory: 256M
 
-  # ---------------------------------------------------------------------------
-  # Database Migrations
-  # ---------------------------------------------------------------------------
-  migrate:
-    build:
-      context: .
-      target: builder
-    container_name: drivecost-migrate
-    env_file:
-      - .env.prod
-    depends_on:
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./server/db/migrations:/app/server/db/migrations:ro
-    command: ['sh', '-c', 'node /app/server/db/migrate.js']
-    restart: 'no'
-    networks:
-      - app-network
-
   # ===========================================================================
   # Observability — Loki Stack
   # ===========================================================================
