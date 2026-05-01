@@ -78,6 +78,20 @@
         <template #cell-total_cost="{ value }">
           {{ formatNumber(value) }}
         </template>
+        <template #cell-is_full_tank="{ value }">
+          <span v-if="value" class="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-1 text-xs font-medium text-success">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Full
+          </span>
+          <span v-else class="inline-flex items-center gap-1 rounded-full bg-text-muted/10 px-2 py-1 text-xs font-medium text-text-muted">
+            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Partial
+          </span>
+        </template>
         <template #cell-l_per_100km="{ value }">
           {{ value ? formatNumber(value) : '—' }}
         </template>
@@ -235,6 +249,7 @@ const columns = [
   { key: 'liters', label: 'Liters' },
   { key: 'price_per_liter', label: 'Price/L' },
   { key: 'total_cost', label: 'Total Cost' },
+  { key: 'is_full_tank', label: 'Full Tank' },
   { key: 'l_per_100km', label: 'L/100km' },
   { key: 'actions', label: 'Actions' },
 ]
@@ -334,15 +349,12 @@ const handleDelete = async () => {
   }
 }
 
-const handleEntrySubmit = async (data: { vehicle_id: number; date: string; odometer_km: number; liters: number; price_per_liter: number; total_cost: number }) => {
+const handleEntrySubmit = async (data: { vehicle_id: number; date: string; odometer_km: number; liters: number; price_per_liter: number; total_cost: number; is_full_tank: boolean }) => {
   try {
     if (entryToEdit.value) {
       const response = await $fetch<{ data: FuelEntry }>(`/api/fuel-entries/${entryToEdit.value.id}`, {
         method: 'PUT',
-        body: {
-          ...data,
-          is_full_tank: true,
-        },
+        body: data,
       })
       
       // Optimistic update
@@ -356,10 +368,7 @@ const handleEntrySubmit = async (data: { vehicle_id: number; date: string; odome
     } else {
       const response = await $fetch<{ data: FuelEntry }>('/api/fuel-entries', {
         method: 'POST',
-        body: {
-          ...data,
-          is_full_tank: true,
-        },
+        body: data,
       })
       
       // Optimistic update

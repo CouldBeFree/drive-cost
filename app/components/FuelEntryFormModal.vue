@@ -87,6 +87,23 @@
         </div>
       </div>
 
+      <!-- Full Tank Checkbox -->
+      <div class="flex items-center gap-3 rounded-xl border-2 border-border bg-surface/50 px-4 py-3">
+        <input
+          v-model="formData.is_full_tank"
+          type="checkbox"
+          id="is_full_tank"
+          class="h-5 w-5 rounded border-2 border-border text-primary transition-all focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        />
+        <label for="is_full_tank" class="flex flex-1 cursor-pointer items-center gap-2 text-sm font-semibold text-text-primary">
+          <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Full Tank Refill
+          <span class="text-xs font-normal text-text-muted">(Required for accurate consumption calculation)</span>
+        </label>
+      </div>
+
       <!-- Price per Liter & Total Cost Grid -->
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -174,7 +191,7 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'submit': [data: { vehicle_id: number; date: string; odometer_km: number; liters: number; price_per_liter: number; total_cost: number }]
+  'submit': [data: { vehicle_id: number; date: string; odometer_km: number; liters: number; price_per_liter: number; total_cost: number; is_full_tank: boolean }]
 }>()
 
 const isEditMode = computed(() => !!props.entry)
@@ -186,6 +203,7 @@ const formData = reactive({
   odometer_km: 0,
   liters: 0,
   price_per_liter: 0,
+  is_full_tank: true,
 })
 
 const totalCost = computed(() => {
@@ -203,6 +221,7 @@ const resetForm = () => {
   formData.odometer_km = 0
   formData.liters = 0
   formData.price_per_liter = 0
+  formData.is_full_tank = true
 }
 
 const handleSubmit = () => {
@@ -215,6 +234,7 @@ const handleSubmit = () => {
     liters: formData.liters,
     price_per_liter: formData.price_per_liter,
     total_cost: totalCost.value,
+    is_full_tank: formData.is_full_tank,
   })
 }
 
@@ -226,6 +246,7 @@ watch(() => props.modelValue, (isOpen) => {
     formData.odometer_km = parseFloat(entry.odometer_km.toString())
     formData.liters = parseFloat(entry.liters.toString())
     formData.price_per_liter = parseFloat(entry.price_per_liter.toString())
+    formData.is_full_tank = entry.is_full_tank ?? true
   } else if (!isOpen) {
     resetForm()
   }

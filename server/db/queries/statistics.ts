@@ -40,7 +40,7 @@ export async function calculateStatistics(params: StatisticsParams): Promise<Sta
   const whereClause = whereConditions.join(' AND ')
 
   const result = await query<StatisticsResult>(`
-    WITH entries_with_prev AS (
+    WITH ranked_entries AS (
       SELECT 
         fe.id,
         fe.vehicle_id,
@@ -49,31 +49,63 @@ export async function calculateStatistics(params: StatisticsParams): Promise<Sta
         fe.liters,
         fe.price_per_liter,
         fe.total_cost,
-        LAG(fe.odometer_km) OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as prev_odometer
+        fe.is_full_tank,
+        ROW_NUMBER() OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as rn
       FROM fuel_entries fe
       INNER JOIN vehicles v ON fe.vehicle_id = v.id
       WHERE ${whereClause}
     ),
+    full_tank_groups AS (
+      SELECT *,
+             SUM(CASE WHEN is_full_tank THEN 1 ELSE 0 END) 
+               OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as full_tank_group
+      FROM ranked_entries
+    ),
+    prev_full_tank AS (
+      SELECT vehicle_id, date, odometer_km, full_tank_group,
+             LAG(odometer_km) OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km) as prev_full_odometer
+      FROM full_tank_groups
+      WHERE is_full_tank = true
+    ),
+    consumption_calc AS (
+      SELECT ftg.id, ftg.vehicle_id, ftg.date, ftg.odometer_km, ftg.liters, ftg.price_per_liter,
+             ftg.total_cost, ftg.is_full_tank,
+             pft.prev_full_odometer,
+             SUM(ftg.liters) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_liters_in_group,
+             SUM(ftg.total_cost) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_cost_in_group
+      FROM full_tank_groups ftg
+      LEFT JOIN prev_full_tank pft ON ftg.vehicle_id = pft.vehicle_id 
+        AND ftg.date = pft.date 
+        AND ftg.odometer_km = pft.odometer_km
+    ),
     calculated AS (
       SELECT 
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (odometer_km - prev_odometer)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (odometer_km - prev_full_odometer)
           ELSE NULL
         END as distance_km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (liters / (odometer_km - prev_odometer) * 100)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_liters_in_group / (odometer_km - prev_full_odometer) * 100)
           ELSE NULL
         END as l_per_100km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (total_cost / (odometer_km - prev_odometer))
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_cost_in_group / (odometer_km - prev_full_odometer))
           ELSE NULL
         END as cost_per_km,
         liters,
         total_cost
-      FROM entries_with_prev
+      FROM consumption_calc
     )
     SELECT 
       ROUND(AVG(l_per_100km)::numeric, 2) as avg_consumption,
@@ -126,7 +158,7 @@ export async function calculateMonthlyStatistics(params: StatisticsParams): Prom
   const whereClause = whereConditions.join(' AND ')
 
   const result = await query<MonthlyStatisticsResult>(`
-    WITH entries_with_prev AS (
+    WITH ranked_entries AS (
       SELECT 
         fe.id,
         fe.vehicle_id,
@@ -136,30 +168,61 @@ export async function calculateMonthlyStatistics(params: StatisticsParams): Prom
         fe.liters,
         fe.price_per_liter,
         fe.total_cost,
-        LAG(fe.odometer_km) OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as prev_odometer
+        fe.is_full_tank,
+        ROW_NUMBER() OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as rn
       FROM fuel_entries fe
       INNER JOIN vehicles v ON fe.vehicle_id = v.id
       WHERE ${whereClause}
+    ),
+    full_tank_groups AS (
+      SELECT *,
+             SUM(CASE WHEN is_full_tank THEN 1 ELSE 0 END) 
+               OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as full_tank_group
+      FROM ranked_entries
+    ),
+    prev_full_tank AS (
+      SELECT vehicle_id, date, odometer_km, full_tank_group,
+             LAG(odometer_km) OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km) as prev_full_odometer
+      FROM full_tank_groups
+      WHERE is_full_tank = true
+    ),
+    consumption_calc AS (
+      SELECT ftg.month, ftg.odometer_km, ftg.is_full_tank,
+             pft.prev_full_odometer,
+             SUM(ftg.liters) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_liters_in_group,
+             SUM(ftg.total_cost) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_cost_in_group
+      FROM full_tank_groups ftg
+      LEFT JOIN prev_full_tank pft ON ftg.vehicle_id = pft.vehicle_id 
+        AND ftg.date = pft.date 
+        AND ftg.odometer_km = pft.odometer_km
     ),
     calculated AS (
       SELECT 
         month,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (odometer_km - prev_odometer)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (odometer_km - prev_full_odometer)
           ELSE NULL
         END as distance_km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (liters / (odometer_km - prev_odometer) * 100)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_liters_in_group / (odometer_km - prev_full_odometer) * 100)
           ELSE NULL
         END as l_per_100km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (total_cost / (odometer_km - prev_odometer))
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_cost_in_group / (odometer_km - prev_full_odometer))
           ELSE NULL
         END as cost_per_km
-      FROM entries_with_prev
+      FROM consumption_calc
     )
     SELECT 
       month,
@@ -207,7 +270,7 @@ export async function calculateDailyStatistics(params: StatisticsParams): Promis
   const whereClause = whereConditions.join(' AND ')
 
   const result = await query<DailyStatisticsResult>(`
-    WITH entries_with_prev AS (
+    WITH ranked_entries AS (
       SELECT 
         fe.id,
         fe.vehicle_id,
@@ -217,30 +280,61 @@ export async function calculateDailyStatistics(params: StatisticsParams): Promis
         fe.liters,
         fe.price_per_liter,
         fe.total_cost,
-        LAG(fe.odometer_km) OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as prev_odometer
+        fe.is_full_tank,
+        ROW_NUMBER() OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as rn
       FROM fuel_entries fe
       INNER JOIN vehicles v ON fe.vehicle_id = v.id
       WHERE ${whereClause}
+    ),
+    full_tank_groups AS (
+      SELECT *,
+             SUM(CASE WHEN is_full_tank THEN 1 ELSE 0 END) 
+               OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as full_tank_group
+      FROM ranked_entries
+    ),
+    prev_full_tank AS (
+      SELECT vehicle_id, date, odometer_km, full_tank_group,
+             LAG(odometer_km) OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km) as prev_full_odometer
+      FROM full_tank_groups
+      WHERE is_full_tank = true
+    ),
+    consumption_calc AS (
+      SELECT ftg.day, ftg.odometer_km, ftg.is_full_tank,
+             pft.prev_full_odometer,
+             SUM(ftg.liters) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_liters_in_group,
+             SUM(ftg.total_cost) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_cost_in_group
+      FROM full_tank_groups ftg
+      LEFT JOIN prev_full_tank pft ON ftg.vehicle_id = pft.vehicle_id 
+        AND ftg.date = pft.date 
+        AND ftg.odometer_km = pft.odometer_km
     ),
     calculated AS (
       SELECT 
         day,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (odometer_km - prev_odometer)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (odometer_km - prev_full_odometer)
           ELSE NULL
         END as distance_km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (liters / (odometer_km - prev_odometer) * 100)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_liters_in_group / (odometer_km - prev_full_odometer) * 100)
           ELSE NULL
         END as l_per_100km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (total_cost / (odometer_km - prev_odometer))
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_cost_in_group / (odometer_km - prev_full_odometer))
           ELSE NULL
         END as cost_per_km
-      FROM entries_with_prev
+      FROM consumption_calc
     )
     SELECT 
       day,
@@ -279,7 +373,7 @@ export async function calculateYearlyStatistics(params: StatisticsParams): Promi
   const whereClause = whereConditions.join(' AND ')
 
   const result = await query<YearlyStatisticsResult>(`
-    WITH entries_with_prev AS (
+    WITH ranked_entries AS (
       SELECT 
         fe.id,
         fe.vehicle_id,
@@ -289,30 +383,61 @@ export async function calculateYearlyStatistics(params: StatisticsParams): Promi
         fe.liters,
         fe.price_per_liter,
         fe.total_cost,
-        LAG(fe.odometer_km) OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as prev_odometer
+        fe.is_full_tank,
+        ROW_NUMBER() OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as rn
       FROM fuel_entries fe
       INNER JOIN vehicles v ON fe.vehicle_id = v.id
       WHERE ${whereClause}
+    ),
+    full_tank_groups AS (
+      SELECT *,
+             SUM(CASE WHEN is_full_tank THEN 1 ELSE 0 END) 
+               OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as full_tank_group
+      FROM ranked_entries
+    ),
+    prev_full_tank AS (
+      SELECT vehicle_id, date, odometer_km, full_tank_group,
+             LAG(odometer_km) OVER (PARTITION BY vehicle_id ORDER BY date, odometer_km) as prev_full_odometer
+      FROM full_tank_groups
+      WHERE is_full_tank = true
+    ),
+    consumption_calc AS (
+      SELECT ftg.year, ftg.odometer_km, ftg.is_full_tank,
+             pft.prev_full_odometer,
+             SUM(ftg.liters) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_liters_in_group,
+             SUM(ftg.total_cost) OVER (
+               PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
+               ORDER BY ftg.date, ftg.odometer_km
+               ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+             ) as total_cost_in_group
+      FROM full_tank_groups ftg
+      LEFT JOIN prev_full_tank pft ON ftg.vehicle_id = pft.vehicle_id 
+        AND ftg.date = pft.date 
+        AND ftg.odometer_km = pft.odometer_km
     ),
     calculated AS (
       SELECT 
         year,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (odometer_km - prev_odometer)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (odometer_km - prev_full_odometer)
           ELSE NULL
         END as distance_km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (liters / (odometer_km - prev_odometer) * 100)
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_liters_in_group / (odometer_km - prev_full_odometer) * 100)
           ELSE NULL
         END as l_per_100km,
         CASE 
-          WHEN prev_odometer IS NOT NULL AND (odometer_km - prev_odometer) > 0
-          THEN (total_cost / (odometer_km - prev_odometer))
+          WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
+          THEN (total_cost_in_group / (odometer_km - prev_full_odometer))
           ELSE NULL
         END as cost_per_km
-      FROM entries_with_prev
+      FROM consumption_calc
     )
     SELECT 
       year,
