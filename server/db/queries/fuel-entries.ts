@@ -20,10 +20,35 @@ export async function findAllFuelEntries(): Promise<FuelEntry[]> {
   `)
 }
 
-export async function findFuelEntriesByUser(userId: number, limit?: number, offset?: number): Promise<FuelEntry[]> {
+export async function findFuelEntriesByUser(
+  userId: number, 
+  limit?: number, 
+  offset?: number,
+  vehicleId?: number,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<{ entries: FuelEntry[], total: number }> {
   const params: any[] = [userId]
-  let limitClause = ''
+  const whereConditions: string[] = ['v.user_id = $1']
   
+  if (vehicleId !== undefined) {
+    params.push(vehicleId)
+    whereConditions.push(`fe.vehicle_id = $${params.length}`)
+  }
+  
+  if (dateFrom) {
+    params.push(dateFrom)
+    whereConditions.push(`fe.date >= $${params.length}`)
+  }
+  
+  if (dateTo) {
+    params.push(dateTo)
+    whereConditions.push(`fe.date <= $${params.length}`)
+  }
+  
+  const whereClause = whereConditions.join(' AND ')
+  
+  let limitClause = ''
   if (limit !== undefined) {
     params.push(limit)
     limitClause = `LIMIT $${params.length}`
@@ -34,14 +59,24 @@ export async function findFuelEntriesByUser(userId: number, limit?: number, offs
     }
   }
   
-  return query<FuelEntry>(`
+  // Get total count with same filters
+  const countResult = await queryOne<{ count: string }>(`
+    SELECT COUNT(*) as count
+    FROM fuel_entries fe
+    INNER JOIN vehicles v ON fe.vehicle_id = v.id
+    WHERE ${whereClause}
+  `, params.slice(0, whereConditions.length))
+  
+  const total = parseInt(countResult?.count || '0', 10)
+  
+  const entries = await query<FuelEntry>(`
     WITH ranked_entries AS (
       SELECT fe.id, fe.vehicle_id, fe.date, fe.odometer_km, fe.liters, fe.price_per_liter,
              fe.total_cost, fe.is_full_tank, fe.notes, fe.created_at, v.make, v.model,
              ROW_NUMBER() OVER (PARTITION BY fe.vehicle_id ORDER BY fe.date, fe.odometer_km) as rn
       FROM fuel_entries fe
       INNER JOIN vehicles v ON fe.vehicle_id = v.id
-      WHERE v.user_id = $1
+      WHERE ${whereClause}
     ),
     full_tank_groups AS (
       SELECT *,
@@ -85,6 +120,8 @@ export async function findFuelEntriesByUser(userId: number, limit?: number, offs
     ORDER BY date DESC, odometer_km DESC
     ${limitClause}
   `, params)
+  
+  return { entries, total }
 }
 
 export async function countFuelEntriesByUser(userId: number): Promise<number> {

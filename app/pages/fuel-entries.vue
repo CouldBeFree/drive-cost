@@ -13,8 +13,8 @@
     <!-- Filters -->
     <BaseCard>
       <div class="flex flex-wrap items-center gap-2">
-        <!-- Vehicle Filter -->
-        <div class="min-w-[140px]">
+        <!-- Vehicle Filter (only show if multiple vehicles) -->
+        <div v-if="vehicles.length > 1" class="min-w-[140px]">
           <select
             v-model="selectedVehicleId"
             class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
@@ -27,20 +27,24 @@
         </div>
 
         <!-- Date From -->
-        <input
-          v-model="dateFrom"
-          type="date"
-          placeholder="From"
-          class="min-w-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <div class="flex flex-col gap-1 min-w-[140px]">
+          <label class="text-xs font-medium text-text-muted px-1">From</label>
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="date-input-custom w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
 
         <!-- Date To -->
-        <input
-          v-model="dateTo"
-          type="date"
-          placeholder="To"
-          class="min-w-[140px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-        />
+        <div class="flex flex-col gap-1 min-w-[140px]">
+          <label class="text-xs font-medium text-text-muted px-1">To</label>
+          <input
+            v-model="dateTo"
+            type="date"
+            class="date-input-custom w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
 
         <!-- Clear Filters -->
         <button
@@ -263,30 +267,22 @@ const dateTo = ref('')
 const toast = useToast()
 
 const hasActiveFilters = computed(() => {
-  return searchQuery.value || selectedVehicleId.value || dateFrom.value || dateTo.value
+  // Don't count auto-selected single vehicle as active filter
+  const hasVehicleFilter = vehicles.value.length > 1 && selectedVehicleId.value !== null
+  return searchQuery.value || hasVehicleFilter || dateFrom.value || dateTo.value
 })
 
 const filteredEntries = computed(() => {
-  let result = entries.value
-
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(entry => {
-      return (
-        entry.make?.toLowerCase().includes(query) ||
-        entry.model?.toLowerCase().includes(query) ||
-        entry.total_cost.toString().includes(query) ||
-        formatDate(entry.date).includes(query)
-      )
-    })
-  }
-
-  return result
+  // Pagination and filtering already handled by backend
+  return entries.value
 })
 
 const clearFilters = () => {
   searchQuery.value = ''
-  selectedVehicleId.value = null
+  // Only clear vehicle filter if user has multiple vehicles
+  if (vehicles.value.length > 1) {
+    selectedVehicleId.value = null
+  }
   dateFrom.value = ''
   dateTo.value = ''
 }
@@ -388,6 +384,11 @@ const loadVehicles = async () => {
   try {
     const response = await $fetch<{ data: Vehicle[] }>('/api/vehicles')
     vehicles.value = response.data
+    
+    // Auto-select single vehicle
+    if (vehicles.value.length === 1 && vehicles.value[0]) {
+      selectedVehicleId.value = vehicles.value[0].id
+    }
   } catch (error) {
     console.error('Failed to load vehicles:', error)
   }
@@ -491,3 +492,29 @@ onMounted(() => {
   loadFuelEntries()
 })
 </script>
+
+<style scoped>
+/* Hide date input browser UI when empty */
+.date-input-custom::-webkit-datetime-edit-text,
+.date-input-custom::-webkit-datetime-edit-month-field,
+.date-input-custom::-webkit-datetime-edit-day-field,
+.date-input-custom::-webkit-datetime-edit-year-field {
+  color: transparent;
+  width: 0;
+  padding: 0;
+}
+
+.date-input-custom:valid::-webkit-datetime-edit-text,
+.date-input-custom:valid::-webkit-datetime-edit-month-field,
+.date-input-custom:valid::-webkit-datetime-edit-day-field,
+.date-input-custom:valid::-webkit-datetime-edit-year-field {
+  color: inherit;
+  width: auto;
+  padding: initial;
+}
+
+/* Ensure calendar icon is always clickable */
+.date-input-custom::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+</style>

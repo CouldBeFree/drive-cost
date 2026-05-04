@@ -1,4 +1,4 @@
-import { getFuelEntriesByUser, getFuelEntriesByVehicle, getTotalFuelEntriesByUser } from '~~/server/services/fuelEntryService'
+import { findFuelEntriesByUser } from '~~/server/db/queries/fuel-entries'
 
 export default defineEventHandler(async (event) => {
   const session = await getUserSession(event)
@@ -7,25 +7,22 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event)
-  const vehicleId = query.vehicle_id ? Number(query.vehicle_id) : null
+  const vehicleId = query.vehicle_id ? Number(query.vehicle_id) : undefined
+  const dateFrom = query.date_from ? String(query.date_from) : undefined
+  const dateTo = query.date_to ? String(query.date_to) : undefined
   const page = query.page ? Number(query.page) : 1
   const limit = query.limit ? Number(query.limit) : 10
   const offset = (page - 1) * limit
 
-  const entries = vehicleId
-    ? await getFuelEntriesByVehicle(vehicleId)
-    : await getFuelEntriesByUser(session.user.id, limit, offset)
-
-  const total = vehicleId ? entries.length : await getTotalFuelEntriesByUser(session.user.id)
-  const totalPages = Math.ceil(total / limit)
+  const result = await findFuelEntriesByUser(session.user.id, limit, offset, vehicleId, dateFrom, dateTo)
 
   return { 
-    data: entries,
+    data: result.entries,
     pagination: {
       page,
       limit,
-      total,
-      totalPages
+      total: result.total,
+      totalPages: Math.ceil(result.total / limit)
     }
   }
 })
