@@ -40,3 +40,16 @@ export async function login(email: string, password: string): Promise<User> {
 export async function getUserById(id: number): Promise<User | null> {
   return userQueries.findById(id)
 }
+
+export async function createUser(data: { email: string; name: string; password: string }): Promise<User> {
+  const existingUser = await userQueries.findByEmail(data.email)
+  if (existingUser) {
+    throw new Error('User with this email already exists')
+  }
+
+  // For OAuth users, password can be empty string
+  const passwordHash = data.password ? await bcrypt.hash(data.password, SALT_ROUNDS) : ''
+  const user = await userQueries.create(data.email, passwordHash, data.name)
+  
+  return user
+}
