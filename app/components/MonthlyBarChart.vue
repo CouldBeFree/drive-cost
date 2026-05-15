@@ -29,13 +29,17 @@ const props = withDefaults(defineProps<Props>(), {
 
 const defaultMonthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+// Mirror of the Tailwind tokens defined in tailwind.config.ts
+const BAR_COLOR_MAP: Record<string, string> = {
+  'bg-primary': '#3b82f6',
+  'bg-secondary': '#8b5cf6',
+  'bg-success': '#10b981',
+  'bg-warning': '#f59e0b',
+  'bg-error': '#ef4444',
+}
+
 const getBarColorValue = (): string => {
-  const colorMap: Record<string, string> = {
-    'bg-primary': '#3b82f6',
-    'bg-secondary': '#f97316',
-    'bg-success': '#22c55e',
-  }
-  return colorMap[props.barColor] || '#3b82f6'
+  return BAR_COLOR_MAP[props.barColor] || BAR_COLOR_MAP['bg-primary']!
 }
 
 const chartData = computed(() => {

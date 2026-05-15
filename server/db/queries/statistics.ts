@@ -131,6 +131,7 @@ interface MonthlyStatisticsResult {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 export async function calculateMonthlyStatistics(params: StatisticsParams): Promise<MonthlyStatisticsResult[]> {
@@ -187,7 +188,7 @@ export async function calculateMonthlyStatistics(params: StatisticsParams): Prom
       WHERE is_full_tank = true
     ),
     consumption_calc AS (
-      SELECT ftg.month, ftg.odometer_km, ftg.is_full_tank,
+      SELECT ftg.month, ftg.odometer_km, ftg.is_full_tank, ftg.total_cost,
              pft.prev_full_odometer,
              SUM(ftg.liters) OVER (
                PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
@@ -207,6 +208,7 @@ export async function calculateMonthlyStatistics(params: StatisticsParams): Prom
     calculated AS (
       SELECT 
         month,
+        total_cost,
         CASE 
           WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
           THEN (odometer_km - prev_full_odometer)
@@ -228,10 +230,11 @@ export async function calculateMonthlyStatistics(params: StatisticsParams): Prom
       month,
       ROUND(AVG(l_per_100km)::numeric, 2) as avg_consumption,
       ROUND(AVG(cost_per_km)::numeric, 2) as avg_cost_per_km,
-      SUM(distance_km) as total_distance
+      SUM(distance_km) as total_distance,
+      ROUND(SUM(total_cost)::numeric, 2) as total_cost
     FROM calculated
-    WHERE distance_km IS NOT NULL
     GROUP BY month
+    HAVING SUM(total_cost) IS NOT NULL
     ORDER BY month
   `, queryParams)
 
@@ -243,6 +246,7 @@ interface DailyStatisticsResult {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 export async function calculateDailyStatistics(params: StatisticsParams): Promise<DailyStatisticsResult[]> {
@@ -299,7 +303,7 @@ export async function calculateDailyStatistics(params: StatisticsParams): Promis
       WHERE is_full_tank = true
     ),
     consumption_calc AS (
-      SELECT ftg.day, ftg.odometer_km, ftg.is_full_tank,
+      SELECT ftg.day, ftg.odometer_km, ftg.is_full_tank, ftg.total_cost,
              pft.prev_full_odometer,
              SUM(ftg.liters) OVER (
                PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
@@ -319,6 +323,7 @@ export async function calculateDailyStatistics(params: StatisticsParams): Promis
     calculated AS (
       SELECT 
         day,
+        total_cost,
         CASE 
           WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
           THEN (odometer_km - prev_full_odometer)
@@ -340,10 +345,11 @@ export async function calculateDailyStatistics(params: StatisticsParams): Promis
       day,
       ROUND(AVG(l_per_100km)::numeric, 2) as avg_consumption,
       ROUND(AVG(cost_per_km)::numeric, 2) as avg_cost_per_km,
-      SUM(distance_km) as total_distance
+      SUM(distance_km) as total_distance,
+      ROUND(SUM(total_cost)::numeric, 2) as total_cost
     FROM calculated
-    WHERE distance_km IS NOT NULL
     GROUP BY day
+    HAVING SUM(total_cost) IS NOT NULL
     ORDER BY day
   `, queryParams)
 
@@ -355,6 +361,7 @@ interface YearlyStatisticsResult {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 export async function calculateYearlyStatistics(params: StatisticsParams): Promise<YearlyStatisticsResult[]> {
@@ -402,7 +409,7 @@ export async function calculateYearlyStatistics(params: StatisticsParams): Promi
       WHERE is_full_tank = true
     ),
     consumption_calc AS (
-      SELECT ftg.year, ftg.odometer_km, ftg.is_full_tank,
+      SELECT ftg.year, ftg.odometer_km, ftg.is_full_tank, ftg.total_cost,
              pft.prev_full_odometer,
              SUM(ftg.liters) OVER (
                PARTITION BY ftg.vehicle_id, ftg.full_tank_group 
@@ -422,6 +429,7 @@ export async function calculateYearlyStatistics(params: StatisticsParams): Promi
     calculated AS (
       SELECT 
         year,
+        total_cost,
         CASE 
           WHEN is_full_tank = true AND prev_full_odometer IS NOT NULL AND (odometer_km - prev_full_odometer) > 0
           THEN (odometer_km - prev_full_odometer)
@@ -443,10 +451,11 @@ export async function calculateYearlyStatistics(params: StatisticsParams): Promi
       year,
       ROUND(AVG(l_per_100km)::numeric, 2) as avg_consumption,
       ROUND(AVG(cost_per_km)::numeric, 2) as avg_cost_per_km,
-      SUM(distance_km) as total_distance
+      SUM(distance_km) as total_distance,
+      ROUND(SUM(total_cost)::numeric, 2) as total_cost
     FROM calculated
-    WHERE distance_km IS NOT NULL
     GROUP BY year
+    HAVING SUM(total_cost) IS NOT NULL
     ORDER BY year
   `, queryParams)
 

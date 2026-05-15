@@ -30,6 +30,7 @@ export default {
         },
         success: '#10b981',
         secondary: '#8b5cf6',
+        warning: '#f59e0b',
         error: '#ef4444',
       },
       borderRadius: {

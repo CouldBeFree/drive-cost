@@ -233,6 +233,7 @@
 
 <script setup lang="ts">
 import type { FuelEntry, Vehicle } from '~/types'
+import { formatDateShort, formatLooseNumber } from '~/utils/format'
 
 definePageMeta({
   layout: 'dashboard',
@@ -260,7 +261,6 @@ const columns = [
 
 const entries = ref<FuelEntry[]>([])
 const loading = ref(false)
-const searchQuery = ref('')
 const selectedVehicleId = ref<number | null>(null)
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -269,7 +269,7 @@ const toast = useToast()
 const hasActiveFilters = computed(() => {
   // Don't count auto-selected single vehicle as active filter
   const hasVehicleFilter = vehicles.value.length > 1 && selectedVehicleId.value !== null
-  return searchQuery.value || hasVehicleFilter || dateFrom.value || dateTo.value
+  return hasVehicleFilter || !!dateFrom.value || !!dateTo.value
 })
 
 const filteredEntries = computed(() => {
@@ -278,7 +278,6 @@ const filteredEntries = computed(() => {
 })
 
 const clearFilters = () => {
-  searchQuery.value = ''
   // Only clear vehicle filter if user has multiple vehicles
   if (vehicles.value.length > 1) {
     selectedVehicleId.value = null
@@ -287,19 +286,8 @@ const clearFilters = () => {
   dateTo.value = ''
 }
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('uk-UA', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
-const formatNumber = (value: number) => {
-  const num = Number(value)
-  return num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '')
-}
+const formatDate = formatDateShort
+const formatNumber = formatLooseNumber
 
 const openAddForm = () => {
   entryToEdit.value = null

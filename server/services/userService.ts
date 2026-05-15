@@ -22,12 +22,7 @@ export async function login(email: string, password: string): Promise<User> {
     throw new Error('Invalid email or password')
   }
 
-  const userWithPassword = await userQueries.findByEmail(email)
-  if (!userWithPassword) {
-    throw new Error('Invalid email or password')
-  }
-
-  const isValidPassword = await bcrypt.compare(password, (userWithPassword as any).password_hash)
+  const isValidPassword = await bcrypt.compare(password, (user as any).password_hash)
   if (!isValidPassword) {
     throw new Error('Invalid email or password')
   }

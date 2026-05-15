@@ -105,17 +105,17 @@
       </Transition>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <BaseCard title="Avg. Consumption">
         <p class="text-3xl font-bold text-primary">
-          {{ formatDecimal(statistics?.avg_consumption) }}
+          {{ formatNumber(statistics?.avg_consumption) }}
           <span class="text-base font-normal text-text-muted">L/100km</span>
         </p>
       </BaseCard>
 
       <BaseCard title="Avg. Cost per km">
         <p class="text-3xl font-bold text-secondary">
-          {{ formatDecimal(statistics?.avg_cost_per_km) }}
+          {{ formatNumber(statistics?.avg_cost_per_km) }}
           <span class="text-base font-normal text-text-muted">$/km</span>
         </p>
       </BaseCard>
@@ -126,96 +126,46 @@
           <span class="text-base font-normal text-text-muted">km</span>
         </p>
       </BaseCard>
+
+      <BaseCard :title="`Total Expense (${periodLabel})`">
+        <p class="text-3xl font-bold text-amber-500">
+          {{ formatNumber(statistics?.total_cost) }}
+          <span class="text-base font-normal text-text-muted">$</span>
+        </p>
+      </BaseCard>
     </div>
 
     <!-- Monthly Charts (only show when Year is selected) -->
-    <div v-if="periodType === 'year' && monthlyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <BaseCard title="Monthly Consumption">
-        <MonthlyBarChart
-          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.avg_consumption }))"
-          bar-color="bg-primary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Monthly Cost per km">
-        <MonthlyBarChart
-          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.avg_cost_per_km }))"
-          bar-color="bg-secondary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Monthly Distance">
-        <MonthlyBarChart
-          :data="monthlyStatistics.map(m => ({ month: m.month, value: m.total_distance }))"
-          bar-color="bg-success"
-          :value-formatter="formatInteger"
-        />
-      </BaseCard>
-    </div>
+    <StatChartGrid
+      v-if="periodType === 'year' && monthlyStatistics.length > 0"
+      :data="monthlyStatistics"
+      key-field="month"
+      prefix="Monthly"
+    />
 
     <!-- Daily Charts (only show when Month is selected) -->
-    <div v-if="periodType === 'month' && dailyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <BaseCard title="Daily Consumption">
-        <MonthlyBarChart
-          :data="dailyStatistics.map(d => ({ month: d.day, value: d.avg_consumption }))"
-          bar-color="bg-primary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Daily Cost per km">
-        <MonthlyBarChart
-          :data="dailyStatistics.map(d => ({ month: d.day, value: d.avg_cost_per_km }))"
-          bar-color="bg-secondary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Daily Distance">
-        <MonthlyBarChart
-          :data="dailyStatistics.map(d => ({ month: d.day, value: d.total_distance }))"
-          bar-color="bg-success"
-          :value-formatter="formatInteger"
-        />
-      </BaseCard>
-    </div>
+    <StatChartGrid
+      v-if="periodType === 'month' && dailyStatistics.length > 0"
+      :data="dailyStatistics"
+      key-field="day"
+      prefix="Daily"
+      :custom-labels="dailyStatistics.map(d => d.day.toString())"
+    />
 
     <!-- Yearly Charts (only show when All Time is selected) -->
-    <div v-if="periodType === 'all-time' && yearlyStatistics.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <BaseCard title="Yearly Consumption">
-        <MonthlyBarChart
-          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.avg_consumption }))"
-          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
-          bar-color="bg-primary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Yearly Cost per km">
-        <MonthlyBarChart
-          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.avg_cost_per_km }))"
-          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
-          bar-color="bg-secondary"
-          :value-formatter="formatDecimal"
-        />
-      </BaseCard>
-
-      <BaseCard title="Yearly Distance">
-        <MonthlyBarChart
-          :data="yearlyStatistics.map(y => ({ month: y.year, value: y.total_distance }))"
-          :custom-labels="yearlyStatistics.map(y => y.year.toString())"
-          bar-color="bg-success"
-          :value-formatter="formatInteger"
-        />
-      </BaseCard>
-    </div>
+    <StatChartGrid
+      v-if="periodType === 'all-time' && yearlyStatistics.length > 0"
+      :data="yearlyStatistics"
+      key-field="year"
+      prefix="Yearly"
+      :custom-labels="yearlyStatistics.map(y => y.year.toString())"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { Vehicle } from '~/types'
+import { formatNumber, formatInteger } from '~/utils/format'
 
 definePageMeta({
   layout: 'dashboard',
@@ -235,6 +185,7 @@ interface MonthlyStatistics {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 interface DailyStatistics {
@@ -242,6 +193,7 @@ interface DailyStatistics {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 interface YearlyStatistics {
@@ -249,6 +201,7 @@ interface YearlyStatistics {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
+  total_cost: number | null
 }
 
 const vehicles = ref<Vehicle[]>([])
@@ -260,6 +213,17 @@ const statistics = ref<Statistics | null>(null)
 const monthlyStatistics = ref<MonthlyStatistics[]>([])
 const dailyStatistics = ref<DailyStatistics[]>([])
 const yearlyStatistics = ref<YearlyStatistics[]>([])
+
+const periodLabel = computed(() => {
+  if (periodType.value === 'all-time') return 'All Time'
+  if (periodType.value === 'year') return selectedYear.value.toString()
+  if (periodType.value === 'month') {
+    const [year, month] = selectedMonth.value.split('-')
+    const date = new Date(Number(year), Number(month) - 1)
+    return date.toLocaleString('en-US', { month: 'short', year: 'numeric' })
+  }
+  return ''
+})
 
 // Generate available years (current year and 5 years back)
 const availableYears = computed(() => {
@@ -289,72 +253,64 @@ const loadVehicles = async () => {
   }
 }
 
+interface StatisticsQuery {
+  vehicle_id?: number
+  month?: string
+  year?: number
+  monthly?: 'true'
+  daily?: 'true'
+  yearly?: 'true'
+}
+
 const loadStatistics = async () => {
   try {
-    const params: Record<string, any> = {}
-    
+    const baseParams: StatisticsQuery = {}
+
     if (selectedVehicleId.value) {
-      params.vehicle_id = selectedVehicleId.value
+      baseParams.vehicle_id = selectedVehicleId.value
     }
-    
+
     if (periodType.value === 'month') {
-      params.month = selectedMonth.value
+      baseParams.month = selectedMonth.value
     } else if (periodType.value === 'year') {
-      params.year = selectedYear.value
+      baseParams.year = selectedYear.value
     }
-    
-    const response = await $fetch<{ data: Statistics }>('/api/statistics', { params })
+
+    const response = await $fetch<{ data: Statistics }>('/api/statistics', { params: baseParams })
     statistics.value = response.data
 
     // Load monthly breakdown if year is selected
     if (periodType.value === 'year') {
-      const monthlyParams = { ...params, monthly: 'true' }
-      const monthlyResponse = await $fetch<{ data: MonthlyStatistics[] }>('/api/statistics', { params: monthlyParams })
+      const monthlyResponse = await $fetch<{ data: MonthlyStatistics[] }>('/api/statistics', {
+        params: { ...baseParams, monthly: 'true' },
+      })
       monthlyStatistics.value = monthlyResponse.data
-      console.log('Monthly statistics:', monthlyStatistics.value)
     } else {
       monthlyStatistics.value = []
     }
 
     // Load daily breakdown if month is selected
     if (periodType.value === 'month') {
-      const dailyParams = { ...params, daily: 'true' }
-      const dailyResponse = await $fetch<{ data: DailyStatistics[] }>('/api/statistics', { params: dailyParams })
+      const dailyResponse = await $fetch<{ data: DailyStatistics[] }>('/api/statistics', {
+        params: { ...baseParams, daily: 'true' },
+      })
       dailyStatistics.value = dailyResponse.data
-      console.log('Daily statistics:', dailyStatistics.value)
     } else {
       dailyStatistics.value = []
     }
 
     // Load yearly breakdown if all-time is selected
     if (periodType.value === 'all-time') {
-      const yearlyParams = { 
-        vehicle_id: selectedVehicleId.value,
-        yearly: 'true' 
-      }
+      const yearlyParams: StatisticsQuery = { yearly: 'true' }
+      if (selectedVehicleId.value) yearlyParams.vehicle_id = selectedVehicleId.value
       const yearlyResponse = await $fetch<{ data: YearlyStatistics[] }>('/api/statistics', { params: yearlyParams })
       yearlyStatistics.value = yearlyResponse.data
-      console.log('Yearly statistics:', yearlyStatistics.value)
     } else {
       yearlyStatistics.value = []
     }
   } catch (error) {
     console.error('Failed to load statistics:', error)
   }
-}
-
-// Number formatting helpers
-const formatDecimal = (value: number | null | undefined): string => {
-  if (value == null) return '—'
-  return parseFloat(value.toString()).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
-
-const formatInteger = (value: number | null | undefined): string => {
-  if (value == null) return '—'
-  return Math.round(parseFloat(value.toString())).toLocaleString('en-US')
 }
 
 // Watch for filter changes and reload statistics

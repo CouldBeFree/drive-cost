@@ -45,8 +45,6 @@ export default defineEventHandler(async (event) => {
       startDate,
       endDate,
     })
-    console.log('Daily stats query params:', { userId: session.user.id, vehicleId, startDate, endDate })
-    console.log('Daily stats result:', dailyStats)
     return { data: dailyStats }
   } else if (monthly && year) {
     // Return monthly breakdown for the year
