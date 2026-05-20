@@ -5,10 +5,46 @@
         <h1 class="text-2xl font-bold text-text-primary">Fuel Entries</h1>
         <p class="text-sm text-text-muted">Track your refueling history</p>
       </div>
-      <BaseButton @click="openAddForm">
+      <BaseButton 
+        @click="openAddForm" 
+        :disabled="vehicles.length === 0"
+        :class="{ 'opacity-50 cursor-not-allowed': vehicles.length === 0 }"
+      >
         + Add Entry
       </BaseButton>
     </div>
+
+    <!-- No Vehicle State -->
+    <BaseCard v-if="vehicles.length === 0 && !loading">
+      <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+        <div class="relative mb-6">
+          <div class="absolute inset-0 bg-primary/5 rounded-full blur-2xl scale-150"></div>
+          <div class="relative flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+            <svg class="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+            </svg>
+          </div>
+        </div>
+        
+        <h3 class="text-lg font-semibold text-text-primary mb-2">
+          No Vehicle Added Yet
+        </h3>
+        
+        <p class="text-sm text-text-muted max-w-md mb-6 leading-relaxed">
+          To start tracking fuel entries, you'll need to add a vehicle first. Head to the Vehicles page to register your car and begin monitoring your fuel consumption.
+        </p>
+        
+        <NuxtLink 
+          to="/vehicles"
+          class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-medium rounded-xl shadow-sm hover:bg-primary/90 transition-all active:scale-95 group"
+        >
+          <svg class="w-4 h-4 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Add Your First Vehicle
+        </NuxtLink>
+      </div>
+    </BaseCard>
 
     <!-- Filters -->
     <BaseCard>
