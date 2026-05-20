@@ -108,13 +108,12 @@ export async function calculateStatistics(params: StatisticsParams): Promise<Sta
       FROM consumption_calc
     )
     SELECT 
-      ROUND(AVG(l_per_100km)::numeric, 2) as avg_consumption,
-      ROUND(AVG(cost_per_km)::numeric, 2) as avg_cost_per_km,
+      ROUND(AVG(l_per_100km) FILTER (WHERE distance_km IS NOT NULL)::numeric, 2) as avg_consumption,
+      ROUND(AVG(cost_per_km) FILTER (WHERE distance_km IS NOT NULL)::numeric, 2) as avg_cost_per_km,
       SUM(distance_km) as total_distance,
       ROUND(SUM(liters)::numeric, 2) as total_fuel,
       ROUND(SUM(total_cost)::numeric, 2) as total_cost
     FROM calculated
-    WHERE distance_km IS NOT NULL
   `, queryParams)
 
   return result[0] || {
