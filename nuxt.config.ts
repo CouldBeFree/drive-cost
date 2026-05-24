@@ -123,7 +123,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     databaseUrl: process.env.DATABASE_URL || '',
     session: {
-      maxAge: 60 * 60 * 24 * 7, // 7 days in seconds
+      maxAge: 60 * 60 * 24 * 30, // 30 days in seconds
+      cookie: {
+        sameSite: 'lax',
+      },
     },
   },
 })

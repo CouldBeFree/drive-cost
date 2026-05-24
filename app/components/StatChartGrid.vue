@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <BaseCard :title="`${prefix} Consumption`">
       <MonthlyBarChart
         :data="bucketData('avg_consumption')"
@@ -35,19 +35,39 @@
         :value-formatter="formatNumber"
       />
     </BaseCard>
+
+    <BaseCard :title="`${prefix} Fuel`">
+      <MonthlyBarChart
+        :data="bucketData('total_fuel')"
+        :custom-labels="customLabels"
+        bar-color="bg-blue-500"
+        :value-formatter="formatNumber"
+      />
+    </BaseCard>
+
+    <BaseCard :title="`${prefix} Entries`">
+      <MonthlyBarChart
+        :data="bucketData('entry_count')"
+        :custom-labels="customLabels"
+        bar-color="bg-purple-500"
+        :value-formatter="formatInteger"
+      />
+    </BaseCard>
   </div>
 </template>
 
 <script setup lang="ts">
 import { formatNumber, formatInteger } from '~/utils/format'
 
-type StatField = 'avg_consumption' | 'avg_cost_per_km' | 'total_distance' | 'total_cost'
+type StatField = 'avg_consumption' | 'avg_cost_per_km' | 'total_distance' | 'total_cost' | 'total_fuel' | 'entry_count'
 
 export interface BucketStat {
   avg_consumption: number | null
   avg_cost_per_km: number | null
   total_distance: number | null
   total_cost: number | null
+  total_fuel: number | null
+  entry_count: number | null
   [bucketKey: string]: number | null
 }
 

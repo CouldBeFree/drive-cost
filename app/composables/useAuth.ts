@@ -15,7 +15,9 @@ export const useAuth = () => {
   const fetchSession = async () => {
     try {
       loading.value = true
-      const { data } = await useFetch<SessionResponse>('/api/auth/session')
+      const { data } = await useFetch<SessionResponse>('/api/auth/session', {
+        credentials: 'include',
+      })
       user.value = data.value?.user ?? null
     } catch {
       user.value = null
@@ -30,6 +32,7 @@ export const useAuth = () => {
       const { data, error } = await useFetch<AuthResponse>('/api/auth/login', {
         method: 'POST',
         body: { email, password },
+        credentials: 'include',
       })
 
       if (error.value) {
@@ -49,6 +52,7 @@ export const useAuth = () => {
       const { data, error } = await useFetch<AuthResponse>('/api/auth/register', {
         method: 'POST',
         body: { name, email, password },
+        credentials: 'include',
       })
 
       if (error.value) {
@@ -65,7 +69,10 @@ export const useAuth = () => {
   const logout = async () => {
     loading.value = true
     try {
-      await useFetch('/api/auth/logout', { method: 'POST' })
+      await useFetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      })
       user.value = null
       await navigateTo('/auth/login')
     } catch (error) {

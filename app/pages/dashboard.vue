@@ -105,7 +105,7 @@
       </Transition>
     </div>
 
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <BaseCard title="Avg. Consumption">
         <p class="text-3xl font-bold text-primary">
           {{ formatNumber(statistics?.avg_consumption) }}
@@ -133,6 +133,20 @@
           <span class="text-base font-normal text-text-muted">$</span>
         </p>
       </BaseCard>
+
+      <BaseCard :title="`Total Liters (${periodLabel})`">
+        <p class="text-3xl font-bold text-blue-500">
+          {{ formatNumber(statistics?.total_fuel) }}
+          <span class="text-base font-normal text-text-muted">L</span>
+        </p>
+      </BaseCard>
+
+      <BaseCard :title="`Fuel Entries (${periodLabel})`">
+        <p class="text-3xl font-bold text-purple-500">
+          {{ formatInteger(statistics?.entry_count) }}
+          <span class="text-base font-normal text-text-muted">entries</span>
+        </p>
+      </BaseCard>
     </div>
 
     <!-- Monthly Charts (only show when Year is selected) -->
@@ -141,15 +155,6 @@
       :data="monthlyStatistics"
       key-field="month"
       prefix="Monthly"
-    />
-
-    <!-- Daily Charts (only show when Month is selected) -->
-    <StatChartGrid
-      v-if="periodType === 'month' && dailyStatistics.length > 0"
-      :data="dailyStatistics"
-      key-field="day"
-      prefix="Daily"
-      :custom-labels="dailyStatistics.map(d => d.day.toString())"
     />
 
     <!-- Yearly Charts (only show when All Time is selected) -->
@@ -178,6 +183,7 @@ interface Statistics {
   total_distance: number | null
   total_fuel: number | null
   total_cost: number | null
+  entry_count: number | null
 }
 
 interface MonthlyStatistics {
@@ -186,6 +192,8 @@ interface MonthlyStatistics {
   avg_cost_per_km: number | null
   total_distance: number | null
   total_cost: number | null
+  total_fuel: number | null
+  entry_count: number | null
 }
 
 interface DailyStatistics {
@@ -194,6 +202,8 @@ interface DailyStatistics {
   avg_cost_per_km: number | null
   total_distance: number | null
   total_cost: number | null
+  total_fuel: number | null
+  entry_count: number | null
 }
 
 interface YearlyStatistics {
@@ -202,6 +212,8 @@ interface YearlyStatistics {
   avg_cost_per_km: number | null
   total_distance: number | null
   total_cost: number | null
+  total_fuel: number | null
+  entry_count: number | null
 }
 
 const vehicles = ref<Vehicle[]>([])
